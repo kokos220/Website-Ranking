@@ -1,8 +1,33 @@
+import matplotlib.pyplot as plt
+import networkx as nx
+
 def read_file(file_name: str) -> list[str]:
     with open(file_name, 'r', encoding='utf-8') as file:
         file_con = file.readlines()
     return file_con
 
+def visualize_graph(vertical_out: dict, output_file="graph.png"):
+    """
+    Візуалізує використовуючи networkx + matplotlib.
+    """
+    G = nx.DiGraph()
+    for start, ends in vertical_out.items():
+        for end in ends:
+            G.add_edge(start, end)
+    plt.figure(figsize=(8, 6))
+    pos = nx.spring_layout(G, seed=42) 
+    nx.draw(
+        G, pos,
+        with_labels=True,
+        node_size=2000,
+        node_color="#87CEFA",
+        arrowsize=20,
+        font_size=10,
+        font_weight="bold"
+    )
+    plt.savefig(output_file, dpi=300, bbox_inches="tight")
+    plt.close()
+    
 def create_dictionaries(file_content: list[str]) -> tuple:
     vertical_out = {}
     vertical_in = {}
@@ -62,4 +87,5 @@ def get_page_rank(page_rank, out_in_ribs, in_out_ribs, peaks, useless_peaks):
 if __name__ == '__main__':
     file_c = read_file('graph_in.dot')
     vertical_in_1, vertical_out_1, pagerank, vertex, not_used_vertex = create_dictionaries(file_c)
+    visualize_graph(vertical_out_1, "graph.png")
     print(get_page_rank(pagerank, vertical_out_1, vertical_in_1, vertex, not_used_vertex))
