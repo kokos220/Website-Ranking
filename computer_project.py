@@ -83,9 +83,24 @@ def get_page_rank(page_rank, out_in_ribs, in_out_ribs, peaks, useless_peaks):
             page_rank[peak] = (1 - 0.85)/all_vertexes_counter + 0.85*(coefficients_sum + dangling_sum/all_vertexes_counter)
     return page_rank
 
+def top_k(page_rank: dict, k: int = 5) -> list[tuple]:
+    """Return top-k vertices by PageRank."""
+    return sorted(page_rank.items(), key=lambda x: -x[1])[:k]
 
 if __name__ == '__main__':
     file_c = read_file('graph_in.dot')
     vertical_in_1, vertical_out_1, pagerank, vertex, not_used_vertex = create_dictionaries(file_c)
     visualize_graph(vertical_out_1, "graph.png")
-    print(get_page_rank(pagerank, vertical_out_1, vertical_in_1, vertex, not_used_vertex))
+    
+    # Обчислення PageRank
+    final_pr = get_page_rank(pagerank, vertical_out_1, vertical_in_1, vertex, not_used_vertex)
+    
+    # Виведення всіх результатів
+    print("All PageRank values:")
+    print(final_pr)
+    
+    # Виведення топ-5 вершин
+    print("\nTop 5 vertices:")
+    for vertex, rank in top_k(final_pr, 5):
+        print(f"{vertex}: {rank:.6f}")   
+\
