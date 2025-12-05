@@ -17,20 +17,18 @@ def load_graph(path="menu.dot"):
     for line in dot.splitlines():
         line = line.strip().rstrip(";")
 
-        # ----- Вершини -----
-        node_match = re.match(r'(\w+)\s+\[label="(.+)"\]', line)
+        node_match = re.match(r'(\w+)\s+\[label="(.+)"\]', line) #вершини
         if node_match:
             node, label = node_match.groups()
             label_map[label.lower()] = node
             reverse_map[node] = label
             G.add_node(node)
 
-        # ----- Ребра з label -----
-        if "->" in line:
+        if "->" in line: #ребра
             parts = line.split("->")
             if len(parts) >= 2:
                 a = parts[0].strip()
-                b = parts[1].split("[")[0].strip()   # <--- головна правка
+                b = parts[1].split("[")[0].strip()   
                 G.add_edge(a, b)
 
     return G, label_map, reverse_map
@@ -53,7 +51,12 @@ result = QLabel("")
 def show_recommendations(text):
     text = text.lower().strip()
 
-    # --- пошук найближчого збігу по підрядку ---
+    if text == "":            # повертаємось якщо нічого не введено
+        result.setText("")
+        return
+    text = text.lower().strip()
+
+    # пошук найближчого збігу по підрядку 
     candidates = [key for key in labels.keys() if text in key]
 
     if not candidates:
@@ -89,4 +92,3 @@ window.move((screen.width()-window.width())//2, (screen.height()-window.height()
 
 window.show()
 app.exec()
-
