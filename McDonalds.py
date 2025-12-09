@@ -17,14 +17,14 @@ def load_graph(path="menu.dot"):
     for line in dot.splitlines():
         line = line.strip().rstrip(";")
 
-        node_match = re.match(r'(\w+)\s+\[label="(.+)"\]', line) #вершини
+        node_match = re.match(r'(\w+)\s+\[label="(.+)"\]', line)
         if node_match:
             node, label = node_match.groups()
             label_map[label.lower()] = node
             reverse_map[node] = label
             G.add_node(node)
 
-        if "->" in line: #ребра
+        if "->" in line:
             parts = line.split("->")
             if len(parts) >= 2:
                 a = parts[0].strip()
@@ -42,7 +42,6 @@ window.resize(500, 250)
 label = QLabel("Введи позицію з меню:")
 input_field = QLineEdit()
 
-# Завантаження графу
 G, labels, reverse = load_graph("menu.dot")
 
 result = QLabel("")
@@ -51,19 +50,17 @@ result = QLabel("")
 def show_recommendations(text):
     text = text.lower().strip()
 
-    if text == "":            # повертаємось якщо нічого не введено
+    if text == "":
         result.setText("")
         return
     text = text.lower().strip()
 
-    # пошук найближчого збігу по підрядку 
     candidates = [key for key in labels.keys() if text in key]
 
     if not candidates:
         result.setText("Не знайдено у графі.")
         return
 
-    # беремо перший найкращий збіг
     found = candidates[0]
     node = labels[found]
     recs = list(G.successors(node))
@@ -92,3 +89,4 @@ window.move((screen.width()-window.width())//2, (screen.height()-window.height()
 
 window.show()
 app.exec()
+
