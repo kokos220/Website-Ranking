@@ -71,10 +71,10 @@ def get_page_rank(page_rank, out_in_ribs, in_out_ribs, peaks, useless_peaks):
     while start or any(abs(previous_pr[value] - page_rank[value]) > 1e-6 for value in page_rank):
         start = False
         previous_pr = page_rank.copy()
-        dangling_sum = sum(previous_pr[v] for v in no_exit_vert) ## cont S = sum(prev[v] for v in dangling)
+        dangling_sum = sum(previous_pr[v] for v in no_exit_vert)
         for peak in all_peaks:
             coefficients_sum = 0
-            if peak in in_out_ribs: #Якщо вершина має вхід
+            if peak in in_out_ribs:
                 for point in in_out_ribs[peak]:
                     point_rank = previous_pr[point]
                     point_outs = len(out_in_ribs[point])
@@ -92,14 +92,11 @@ if __name__ == '__main__':
     vertical_in_1, vertical_out_1, pagerank, vertex, not_used_vertex = create_dictionaries(file_c)
     visualize_graph(vertical_out_1, "graph.png")
     
-    # Обчислення PageRank
     final_pr = get_page_rank(pagerank, vertical_out_1, vertical_in_1, vertex, not_used_vertex)
     
-    # Виведення всіх результатів
     print("All PageRank values:")
     print(final_pr)
     
-    # Виведення топ-5 вершин
     print("\nTop 5 vertices:")
     for vertex, rank in top_k(final_pr, 5):
         print(f"{vertex}: {rank:.6f}")   
