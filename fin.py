@@ -303,6 +303,18 @@ def start_crawling():
     url = URL_EDIT.text().strip()
     depth_text = DEPTH_EDIT.text().strip()
     max_links_text = MAX_LINKS.text().strip()
+    def is_url(url_link: str) -> bool:
+        """
+        Перевіряє, чи є рядок повноцінною HTTP(S)-URL-адресою.
+
+        :param url: str, рядок для перевірки.
+        :return: bool, True, якщо починається з "http://" або "https://",
+                 інакше False.
+        """
+        return url_link.startswith("http://") or url_link.startswith("https://")
+    if not is_url(url):
+        QMessageBox.warning(WINDOW, "Помилка", "Початкове посилання не вірного типу.")
+        return
     if not url:
         QMessageBox.warning(WINDOW, "Помилка", "Введіть початковий URL.")
         return
