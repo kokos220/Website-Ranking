@@ -146,7 +146,7 @@ git clone https://github.com/your-username/pagerank-web-crawler.git
 cd pagerank-web-crawler
 ```
 
-2. Встановити залежності:
+2. Встановити бібліотеки:
 
 ```bash
 pip install PyQt5
