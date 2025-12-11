@@ -1,4 +1,4 @@
-"""PageRank crawler with PyQt5 GUI (без власних класів)"""
+"""PageRank crawler with PyQt5"""
 
 import sys
 import re
