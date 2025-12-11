@@ -319,13 +319,19 @@ def start_crawling():
         QMessageBox.warning(WINDOW, "Помилка", "Введіть початковий URL.")
         return
     try:
-        depth = int(depth_text)
         max_links = int(max_links_text)
-        if depth < 0 or max_links <= 0:
+        if max_links <= 0:
             int('s')
     except ValueError:
-        QMessageBox.warning(WINDOW,"Помилка", "Глибина та максимальна кількість посилань "
-                            "мають бути додатними цілими числами.")
+        QMessageBox.warning(WINDOW,"Помилка", "Максимальна кількість посилань "
+                            "має бути додатним цілим числом.")
+        return
+    try:
+        depth = int(depth_text)
+        if depth < 0:
+            int('s')
+    except ValueError:
+        QMessageBox.warning(WINDOW,"Помилка", "Глибина має бути додатним цілим числом або 0.")
         return
     LOG_TXT.clear()
     START_BUT.setEnabled(False)
