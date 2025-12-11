@@ -147,21 +147,13 @@ git clone https://github.com/your-username/pagerank-web-crawler.git
 cd pagerank-web-crawler
 ```
 
-2. (Опційно) створити віртуальне середовище:
-
-```bash
-python -m venv venv
-source venv/bin/activate  # Linux / macOS
-venv\Scripts\activate     # Windows
-```
-
-3. Встановити залежності:
+2. Встановити залежності:
 
 ```bash
 pip install PyQt5
 ```
 
-4. Запустити застосунок:
+3. Запустити застосунок:
 
 ```bash
 python ready_project.py
