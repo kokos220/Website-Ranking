@@ -5,11 +5,9 @@ import re
 from urllib.parse import urljoin, urldefrag
 from urllib.request import urlopen, Request
 
-from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QLineEdit, QPushButton, QTextEdit,
-    QMessageBox
-)
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QLabel, QLineEdit, QPushButton, QTextEdit
+from PyQt5.QtWidgets import QMessageBox
 
 APP = None
 WINDOW = None
@@ -21,7 +19,13 @@ LOG_TXT = None
 
 def read_file(file_name: str) -> list[str]:
     """
-    Зчитує граф з файлу. Кожен рядок: url -> url.
+    Зчитує текстовий файл з описом графа посилань.
+
+    Кожен рядок файлу має формат:
+        url -> url
+
+    :param file_name: str, шлях до файлу (наприклад, "menu.dot").
+    :return: list[str], список рядків файлу без додаткової обробки.
     """
     with open(file_name, 'r', encoding='utf-8') as file:
         file_con = file.readlines()
@@ -29,7 +33,18 @@ def read_file(file_name: str) -> list[str]:
 
 def create_dictionaries(file_content: list[str]) -> tuple:
     """
-    Створює словники з графа.
+    Створює словники структури графа за вмістом файлу.
+
+    Зі списку рядків формату "src -> dst" будує:
+      vertical_in – словник {вершина: множина вхідних сусідів};
+      vertical_out – словник {вершина: множина вихідних сусідів};
+      page_rank – словник початкових значень PageRank;
+      vertexes – множина всіх вершин, які зустрілися в ребрах;
+      not_used_vertexes – множина вершин без ребер.
+
+    :param file_content: list[str], список рядків файлу з ребрами графа.
+    :return: tuple[dict, dict, dict, set, set], кортеж 
+    (vertical_in, vertical_out, page_rank, vertexes, not_used_vertexes).
     """
     vertical_out = {}
     vertical_in = {}
@@ -59,7 +74,24 @@ def create_dictionaries(file_content: list[str]) -> tuple:
 
 def get_page_rank(page_rank, out_in_ribs, in_out_ribs, peaks, useless_peaks):
     """
-    Знаходить PageRank для вершин графа.
+    Обчислює значення PageRank для заданого орієнтованого графа.
+
+    Використовується класична ітеративна формула PageRank:
+        PR(v) = (1 - d) / N + d * (сума по всіх u, які ведуть у v) +
+        внесок "висячих" вершин.
+
+    Ітерації тривають, доки зміни PR для всіх вершин не стануть
+    меншими за 1e-6.
+
+    :param page_rank: dict[str, float], початковий словник PageRank.
+    :param out_in_ribs: dict[str, set[str]], словник вихідних ребер
+        {вершина: множина сусідів, куди є ребро}.
+    :param in_out_ribs: dict[str, set[str]], словник вхідних ребер
+        {вершина: множина вершин, звідки є ребро}.
+    :param peaks: set[str], множина вершин графа.
+    :param useless_peaks: set[str], множина не потрібних вершин.
+    :return: dict[str, float], словник PageRank-значень, відсортований
+        за спаданням значення.
     """
     if not peaks:
         return {}
@@ -89,7 +121,15 @@ def get_page_rank(page_rank, out_in_ribs, in_out_ribs, peaks, useless_peaks):
 
 
 def log_message(msg: str):
-    """Виводить повідомлення в QTextEdit і оновлює дані."""
+    """
+    Виводить повідомлення у QTextEdit та оновлює інтерфейс.
+
+    Якщо глобальна змінна LOG_TXT не None, то додається рядок
+    до текстового поля логів, курсор переноситься в кінець,
+    а події Qt обробляються для оновлення GUI.
+
+    :param msg: str, текст повідомлення для виводу.
+    """
     global LOG_TXT
     if LOG_TXT is not None:
         LOG_TXT.append(msg)
@@ -98,13 +138,46 @@ def log_message(msg: str):
 
 def search_links(start_url: str, max_depth: int, output_path: str, max_links_per_page: int):
     """
-    Обходить посилання і записує: url -> url у файл output_path.
+    Рекурсивно обходить веб-сторінки, починаючи з початкової URL-адреси,
+    та записує знайдені посилання у файл.
+
+    Кожен знайдений перехід записується у файл у форматі:
+        source_url -> destination_url
+
+    Обмеження:
+      максимальна глибина обходу (max_depth);
+      максимальна кількість посилань, взятих з однієї сторінки
+      (max_links_per_page);
+      пропускаються технічні/непотрібні посилання.
+
+    :param start_url: str, URL, з якої починається обхід.
+    :param max_depth: int, максимальна глибина рекурсії.
+    :param output_path: str, шлях до файлу, куди будуть записані ребра графа.
+    :param max_links_per_page: int, максимальна кількість посилань,
+        які беруться з однієї сторінки.
     """
     visited = set()
     href_pattern = r'href\s*=\s*["\']([^"\']+)["\']'
     def is_url(url: str) -> bool:
+        """
+        Перевіряє, чи є рядок повноцінною HTTP(S)-URL-адресою.
+
+        :param url: str, рядок для перевірки.
+        :return: bool, True, якщо починається з "http://" або "https://",
+                 інакше False.
+        """
         return url.startswith("http://") or url.startswith("https://")
     def get_html(url: str) -> str | None:
+        """
+        Завантажує HTML-вміст сторінки за вказаною URL-адресою.
+
+        Використовує простий HTTP-запит з User-Agent, декодує
+        відповідь як UTF-8 з ігноруванням помилок.
+
+        :param url: str, URL сторінки, яку потрібно завантажити.
+        :return: str | None, текст HTML або None, якщо сталася помилка
+            (таймаут, помилка мережі тощо).
+        """
         try:
             req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urlopen(req, timeout=5) as resp:
@@ -113,8 +186,31 @@ def search_links(start_url: str, max_depth: int, output_path: str, max_links_per
             return None
     with open(output_path, "w", encoding="utf-8") as f_out:
         def write_line(src: str, dst: str):
+            """
+            Записує ребро графа у файл.
+
+            Формат рядка:
+                src -> dst
+
+            :param src: str, вихідна сторінка.
+            :param dst: str, цільова сторінка.
+            """
             f_out.write(f"{src} -> {dst}\n")
         def search(url: str, depth: int):
+            """
+            Рекурсивна функція обходу посилань з однієї сторінки.
+
+            Для кожної сторінки:
+              завантажує HTML;
+              знаходить усі href-посилання;
+              фільтрує зайві/непотрібні;
+              нормалізує URL (urljoin + urldefrag);
+              записує перехід у файл;
+              рекурсивно продовжує обхід до заданої глибини.
+
+            :param url: str, поточна сторінка для обходу.
+            :param depth: int, поточна глибина рекурсії.
+            """
             if depth > max_depth or url in visited:
                 return
             visited.add(url)
@@ -151,7 +247,19 @@ def search_links(start_url: str, max_depth: int, output_path: str, max_links_per
 
 def run_crawler_and_pagerank(url: str, depth: int, max_links: int):
     """
-    Запускає crawler, потім читає файл, рахує PageRank і показує топ-10 у таблиці.
+    Запускає crawler, будує файл графа, рахує PageRank і виводить топ-10.
+
+    Кроки:
+      Викликає search_links для побудови файлу з ребрами ("menu.dot").
+      Зчитує файл і створює словники графа (create_dictionaries).
+      Обчислює PageRank для всіх вершин (get_page_rank).
+      Виводить у LOG_TXT топ-10 сторінок за рейтингом.
+
+    У разі помилки показує діалогове вікно з повідомленням.
+
+    :param url: str, початкова URL для обходу.
+    :param depth: int, максимальна глибина пошуку (для crawler).
+    :param max_links: int, максимальна кількість посилань з однієї сторінки.
     """
     global START_BUT
     try:
@@ -178,7 +286,19 @@ def run_crawler_and_pagerank(url: str, depth: int, max_links: int):
             START_BUT.setEnabled(True)
 
 def start_crawling():
-    """Зчитує дані з полів, перевіряє."""
+    """
+    Обробляє натискання кнопки старту, зчитує дані з полів і запускає обхід.
+
+    Кроки:
+      Зчитує URL, глибину та max_links з полів вводу.
+      Перевіряє, що URL непорожній.
+      Перетворює глибину та кількість лінків на int та перевіряє,
+      що вони додатні.
+      Очищує лог, блокує кнопку старту.
+      Викликає run_crawler_and_pagerank зі зчитаними параметрами.
+
+    У разі некоректного вводу показує попередження через QMessageBox.
+    """
     global URL_EDIT, DEPTH_EDIT, MAX_LINKS, LOG_TXT, START_BUT
     url = URL_EDIT.text().strip()
     depth_text = DEPTH_EDIT.text().strip()
@@ -201,7 +321,19 @@ def start_crawling():
 
 def build_gui():
     """
-    Створює вікно, всі віджети і підключає сигнали.
+    Створює та налаштовує головне вікно графічного інтерфейсу.
+
+    Вікно містить:
+      поле для вводу початкового URL;
+      поле для вводу максимальної глибини пошуку;
+      поле для вводу максимальної кількості лінків з однієї сторінки;
+      кнопку запуску обходу та обчислення PageRank;
+      QTextEdit для відображення логів виконання.
+
+    Глобальні змінні WINDOW, URL_EDIT, DEPTH_EDIT, MAX_LINKS,
+    START_BUT, LOG_TXT заповнюються посиланнями на відповідні віджети.
+
+    :return: QWidget, створене головне вікно QWidget.
     """
     global WINDOW, URL_EDIT, DEPTH_EDIT, MAX_LINKS
     global START_BUT, LOG_TXT
@@ -244,6 +376,12 @@ def build_gui():
 
 
 def main():
+    """
+    Точка входу в програму.
+
+    Створює QApplication, будує GUI за допомогою build_gui(),
+    показує головне вікно та запускає головний цикл подій Qt.
+    """
     global APP
     APP = QApplication(sys.argv)
     win = build_gui()
